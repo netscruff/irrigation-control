@@ -1,4 +1,4 @@
-#include "Timer.h"
+#include <Metro.h>
 // constants won't change. They're used here to
 // wiring configureation
 // Wireless receiver -> Arduino
@@ -25,8 +25,8 @@ int dState = 0;
 int lastButtonPressed = 0;
 int currentEvent = 0;
 int afterEvent = 0;
-unsigned long period;
-Timer t;
+long period;
+Metro m = Metro(2500);
  
 void setup() {
   // initialize D2 as 5V for receiver
@@ -43,15 +43,15 @@ void setup() {
   digitalWrite(9, HIGH);
   digitalWrite(10, HIGH);
   digitalWrite(13, LOW);
-  int tickEvent = t.every(100, check_switches, (void*)0);
   Serial.begin(57600);
 }
  
-void loop() {
-  t.update();
+void loop()
+{
+  check_switches();
 }
 
-void check_switches(void *context)
+void check_switches()
 {
   aState = digitalRead(APin);
   bState = digitalRead(BPin);
@@ -62,7 +62,7 @@ void check_switches(void *context)
     Serial.println("A Pressed");
     if (lastButtonPressed != APin)
     {
-      period = 60 * 1000;
+      period = 60000;
       pump_on(period);
       lastButtonPressed = APin;
     }
@@ -71,7 +71,7 @@ void check_switches(void *context)
     Serial.println("B Pressed");
     if (lastButtonPressed != BPin)
     {
-      period = 5 * 60 * 1000;
+      period = 300000;
       pump_on(period);
       lastButtonPressed = BPin;
     }
@@ -80,7 +80,7 @@ void check_switches(void *context)
     Serial.println("C Pressed");
     if (lastButtonPressed != CPin)
     {
-      period = 15 * 60 * 1000;
+      period = 900000;
       pump_on(period);
       lastButtonPressed = CPin;
     }
@@ -90,16 +90,20 @@ void check_switches(void *context)
     lastButtonPressed = DPin;
     pump_off();
   }
+  if (m.check() == 1) {
+    Serial.println("Time up");
+    pump_off();
+  }
 }
 
 void pump_on(unsigned long period)
 {
-  currentEvent = t.pulseImmediate(R1, period, LOW);
-  currentEvent = t.pulseImmediate(LED, period, HIGH);
-  //afterEvent = t.after(period + 10, reset_button_pressed, (void*)0);
+  m.interval(period);
+  digitalWrite(R1, LOW);
+  digitalWrite(LED, HIGH);
 }
 
-void reset_button_pressed(void *context)
+void reset_button_pressed()
 {
   lastButtonPressed = 0;
 }
@@ -107,13 +111,8 @@ void reset_button_pressed(void *context)
 void pump_off()
 {
   Serial.println("Turning pump off");
+  m.interval(2500);
   digitalWrite(R1, HIGH);
   digitalWrite(LED, LOW);
-  if (currentEvent != 0) {
-    t.stop(currentEvent);
-    currentEvent = 0;
-    t.stop(afterEvent);
-    afterEvent = 0;
-  }
-  reset_button_pressed((void*)0);
+  reset_button_pressed();
 }
